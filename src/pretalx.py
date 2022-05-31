@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import os
 from typing import List, Optional
 
 import requests
@@ -20,9 +19,10 @@ STATE_WITHDRAWN = "withdrawn"
 
 
 class Config:
-    pretalx_url = "https://program.europython.eu"
-    pretalx_token = os.environ["PRETALX_TOKEN"]  # THIS IS SECRET
-    event_name = "staging-europython-2022"
+    event_name: str
+    pretalx_token: str
+    pretalx_url: str
+    base_url: str
 
 
 class Speaker(BaseModel):
@@ -304,9 +304,9 @@ class PretalxError(Exception):
 class PretalxClient(requests.Session):
     """ """
 
-    base_url = Config.pretalx_url + "/api/events/" + Config.event_name
+    base_url: str = ""
 
-    def __init__(self, *, auth=None, backoff_factor=1):
+    def __init__(self, *, auth=None, base_url="", backoff_factor=1):
         """
         backoff_factor * 2 ** (number_of_failed_requests - 1)
 
@@ -316,6 +316,7 @@ class PretalxClient(requests.Session):
 
         self.backoff_factor = backoff_factor
         self.auth = auth or PretalxTokenAuth(token=Config.pretalx_token)
+        self.base_url = base_url
 
         retry_strategy = Retry(
             total=3,  # retry three times to o a total of 4 requests
@@ -330,6 +331,12 @@ class PretalxClient(requests.Session):
     def request(self, method, url, *args, **kwargs):
         url = f"{self.base_url}{url}"
         return super().request(method, url, timeout=60, *args, **kwargs)
+
+    @classmethod
+    def from_config(cls, config: Config, *args, **kwargs):
+        auth = PretalxTokenAuth(token=config.pretalx_token)
+        obj = cls(auth=auth, base_url=config.base_url, *args, **kwargs)
+        return obj
 
 
 class PretalxTokenAuth(AuthBase):
