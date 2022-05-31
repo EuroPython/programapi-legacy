@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 
-from pretalx import Pretalx, PretalxClient, Config
+from pretalx import Config, Pretalx, PretalxClient
 
 
 class Staging(Config):
@@ -25,7 +25,6 @@ class Production(Config):
     SPEAKERS_PATH = "./data/speakers.json"
 
 
-
 def serialize(obj):
     if isinstance(obj, datetime):
         return obj.isoformat()
@@ -37,12 +36,19 @@ for env in Staging(), Production():
     pretalx = Pretalx(client=PretalxClient.from_config(env))
 
     speakers = []
-    with open(env.SESSIONS_PATH, "w") as subs_fd, open(env.SPEAKERS_PATH, "w") as speakers_fd:
+    with open(env.SESSIONS_PATH, "w") as sessions_fd, open(
+        env.SPEAKERS_PATH, "w"
+    ) as speakers_fd:
         subs = pretalx.get_publishable_submissions()
-        js = []
+        extra_speakers_info = pretalx.get_speakers()
+
+        sessions = []
         for s in subs:
-            js.append(s.dict())
+            # Backfill all the data from the other endpoint
+            # To simplify just overwrite full list of objects
+            s.speakers = [extra_speakers_info[s.code] for s in s.speakers]
+            sessions.append(s.dict())
             speakers += [s1.dict() for s1 in s.speakers]
 
-        subs_fd.write(json.dumps(js, indent=2, default=serialize))
+        sessions_fd.write(json.dumps(sessions, indent=2, default=serialize))
         speakers_fd.write(json.dumps(speakers, indent=2, default=serialize))

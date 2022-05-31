@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import requests
 from pydantic import BaseModel
@@ -32,11 +32,35 @@ class Speaker(BaseModel):
     avatar: Optional[str]
     slug: str
 
+    # Extracted
+    affiliation: Optional[str] = None
+    homepage: Optional[str] = None
+    twitter: Optional[str] = None
+
     @root_validator(pre=True)
     def extract(cls, values):
         values["slug"] = slugify(values["name"])
 
+        # This is not part of Speaker included inside the Submission, however
+        # answers are included when querying the main Speaker endpoint. Because
+        # we're reusing the same schema here, we can use an if to only populate
+        # answers if they exist.
+        if "answers" in values:
+            for answer in values["answers"]:
+                if cls.question_is(answer, "Company / Institute"):
+                    values["affiliation"] = answer["answer"]
+
+                if cls.question_is(answer, "Homepage"):
+                    values["homepage"] = answer["answer"]
+
+                if cls.question_is(answer, "Twitter handle"):
+                    values["twitter"] = answer["answer"]
+
         return values
+
+    @staticmethod
+    def question_is(answer: dict, question: str) -> bool:
+        return answer.get("question", {}).get("question", {}).get("en") == question
 
 
 class Slot(BaseModel):
@@ -78,6 +102,8 @@ class Submission(BaseModel):
     next_talk_code: Optional[str] = None
     prev_talk_code: Optional[str] = None
 
+    website_url: Optional[str] = None
+
     @root_validator(pre=True)
     def extract(cls, values):
         # SubmissionType and Track have localised names. For this project we
@@ -97,12 +123,16 @@ class Submission(BaseModel):
             if cls.question_is(answer, ABSTRACT_TWEET_QUESTION):
                 values["abstract_as_a_tweet"] = answer["answer"]
 
-        values["slug"] = slugify(values["title"])
+        slug = slugify(values["title"])
+        values["slug"] = slug
+        values["website_url"] = f"https://ep2022.europython.eu/session/{slug}"
+
         if values["slot"]:
             slot = Slot.parse_obj(values["slot"])
             values["room"] = slot.room
             values["start"] = slot.start
             values["end"] = slot.end
+
 
         return values
 
@@ -291,9 +321,10 @@ class Pretalx:
         subs = [s for s in subs if s.is_publishable]
         return subs
 
-    def get_speakers(self) -> List[Speaker]:
+    def get_speakers(self) -> Dict[str, Speaker]:
         results = self._paginate("/speakers", limit=25)
         speakers = [Speaker.parse_obj(s) for s in results]
+        speakers = {s.code: s for s in speakers}
         return speakers
 
 
