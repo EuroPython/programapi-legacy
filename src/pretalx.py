@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
-from typing import List, Optional, Dict
+from collections import defaultdict
+from datetime import date, datetime, timedelta
+from typing import Dict, List, Optional
 
 import requests
 from pydantic import BaseModel
@@ -132,7 +133,6 @@ class Submission(BaseModel):
             values["room"] = slot.room
             values["start"] = slot.start
             values["end"] = slot.end
-
 
         return values
 
@@ -394,3 +394,43 @@ class PretalxHTTPAdapter(HTTPAdapter):
             raise PretalxError(e)
 
         return response
+
+
+def convert_to_schedule(sessions):
+    schedule = {"days": defaultdict(lambda: defaultdict(list))}
+
+    for s in sessions:
+        day = s.start.date()
+        day = day.strftime("%Y-%m-%d")
+
+        if s.room not in schedule["days"][day]["rooms"]:
+            schedule["days"][day]["rooms"].append(s.room)
+
+        speakers = [x.name for x in s.speakers]
+        if speakers:
+            speaker = speakers[0]
+        else:
+            speaker = None
+
+        schedule["days"][day]["talks"].append(
+            {
+                "day": day,
+                "ev_custom": s.title,
+                "ev_duration": s.duration,
+                "event_id": "",
+                # NOTE: add domain level(?)
+                "level": s.python_level,
+                "rooms": [s.room],
+                "slug": s.slug,
+                # NOTE: there could be multiple speakers
+                "speaker": speaker,
+                "start_time": s.start.time(),
+                "talk_id": s.code,
+                "time": s.start.time(),
+                "type": s.submission_type,
+                "title": s.title,
+                "tt_duration": s.duration,
+            }
+        )
+
+    return schedule
