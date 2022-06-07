@@ -531,7 +531,7 @@ def append_breaks(schedule):
         schedule["days"][day]["talks"].append(
             break_(
                 "Coffee Break",
-                start=time(15, 05),
+                start=time(15, 5),
                 duration="25",
             )
         )
