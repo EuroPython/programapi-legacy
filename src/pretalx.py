@@ -450,26 +450,9 @@ def append_breaks(schedule):
             "rooms": schedule["days"][day]["rooms"],
             "slug": "",
             "speaker": "",
-            "start_time": time(11,00),
+            "start_time": time(10,00),
             "talk_id": "",
-            "time": time(11,00),
-            "type": "",
-            "title": "Coffee Break",
-            "tt_duration": "30",
-        })
-
-        schedule["days"][day]["talks"].append({
-            "day": day,
-            "ev_custom": "Coffee Break",
-            "ev_duration": "30",
-            "event_id": "",
-            "level": "",
-            "rooms": schedule["days"][day]["rooms"],
-            "slug": "",
-            "speaker": "",
-            "start_time": time(15,30),
-            "talk_id": "",
-            "time": time(15,30),
+            "time": time(10,00),
             "type": "",
             "title": "Coffee Break",
             "tt_duration": "30",
@@ -491,6 +474,24 @@ def append_breaks(schedule):
             "title": "Lunch Break",
             "tt_duration": "60",
         })
+
+        schedule["days"][day]["talks"].append({
+            "day": day,
+            "ev_custom": "Coffee Break",
+            "ev_duration": "30",
+            "event_id": "",
+            "level": "",
+            "rooms": schedule["days"][day]["rooms"],
+            "slug": "",
+            "speaker": "",
+            "start_time": time(15,30),
+            "talk_id": "",
+            "time": time(15,30),
+            "type": "",
+            "title": "Coffee Break",
+            "tt_duration": "30",
+        })
+
 
 
 def sort_by_start_time(schedule):
