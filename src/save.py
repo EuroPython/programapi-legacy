@@ -60,8 +60,11 @@ for env in Staging(), Production():
             speakers += [s1.dict() for s1 in s.speakers]
 
         schedule = convert_to_schedule(subs)
-        append_breaks(schedule)
-        sort_by_start_time(schedule)
+        if "staging" not in env.event_name:
+            # Breaks are hardcoded and work only for production schedule at the
+            # moment.
+            append_breaks(schedule)
+            sort_by_start_time(schedule)
 
         sessions_fd.write(json.dumps(sessions, indent=2, default=serialize))
         speakers_fd.write(json.dumps(speakers, indent=2, default=serialize))

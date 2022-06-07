@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, datetime, timedelta, time
+from datetime import date, datetime, time, timedelta
 from typing import Dict, List, Optional
 
 import requests
@@ -440,58 +440,72 @@ def append_breaks(schedule):
     """
     Those are hardcoded breaks, since we don't get them from the pretalx API
     """
-    for day in schedule["days"]:
-        schedule["days"][day]["talks"].append({
+    tutorial_days = [date(2022, 7, x).strftime("%Y-%m-%d") for x in [11, 12]]
+    conference_days = [date(2022, 7, x).strftime("%Y-%m-%d") for x in [13, 14, 15]]
+
+    def break_(name: str, start: time, duration: str):
+        return {
             "day": day,
-            "ev_custom": "Coffee Break",
-            "ev_duration": "30",
+            "ev_custom": name,
+            "ev_duration": duration,
             "event_id": "",
             "level": "",
             "rooms": schedule["days"][day]["rooms"],
             "slug": "",
             "speaker": "",
-            "start_time": time(10,00),
+            "start_time": start,
             "talk_id": "",
-            "time": time(10,00),
+            "time": start,
             "type": "",
-            "title": "Coffee Break",
-            "tt_duration": "30",
-        })
+            "title": name,
+            "tt_duration": duration,
+        }
 
-        schedule["days"][day]["talks"].append({
-            "day": day,
-            "ev_custom": "Lunch Break",
-            "ev_duration": "60",
-            "event_id": "",
-            "level": "",
-            "rooms": schedule["days"][day]["rooms"],
-            "slug": "",
-            "speaker": "",
-            "start_time": time(13,00),
-            "talk_id": "",
-            "time": time(13,00),
-            "type": "",
-            "title": "Lunch Break",
-            "tt_duration": "60",
-        })
+    for day in tutorial_days:
+        schedule["days"][day]["talks"].append(
+            break_(
+                "Coffee Break",
+                start=time(11, 00),
+                duration="15",
+            )
+        )
+        schedule["days"][day]["talks"].append(
+            break_(
+                "Lunch Break",
+                start=time(12, 30),
+                duration="60",
+            )
+        )
+        schedule["days"][day]["talks"].append(
+            break_(
+                "Coffee Break",
+                start=time(15, 15),
+                duration="15",
+            )
+        )
 
-        schedule["days"][day]["talks"].append({
-            "day": day,
-            "ev_custom": "Coffee Break",
-            "ev_duration": "30",
-            "event_id": "",
-            "level": "",
-            "rooms": schedule["days"][day]["rooms"],
-            "slug": "",
-            "speaker": "",
-            "start_time": time(15,30),
-            "talk_id": "",
-            "time": time(15,30),
-            "type": "",
-            "title": "Coffee Break",
-            "tt_duration": "30",
-        })
-
+    for day in conference_days:
+        schedule["days"][day]["talks"].append(
+            break_(
+                "Coffee Break",
+                start=time(10, 00),
+                duration="30",
+            )
+        )
+        schedule["days"][day]["talks"].append(
+            break_(
+                "Lunch Break",
+                start=time(13, 00),
+                duration="60",
+            )
+        )
+        schedule["days"][day]["talks"].append(
+            break_(
+                "Coffee Break",
+                start=time(15, 30),
+                duration="30",
+            )
+        )
 
 
 def sort_by_start_time(schedule):
