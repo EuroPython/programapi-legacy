@@ -2,7 +2,14 @@ import json
 import os
 from datetime import datetime
 
-from pretalx import Config, Pretalx, PretalxClient, convert_to_schedule
+from pretalx import (
+    Config,
+    Pretalx,
+    PretalxClient,
+    append_breaks,
+    convert_to_schedule,
+    sort_by_start_time,
+)
 
 
 class Staging(Config):
@@ -53,6 +60,8 @@ for env in Staging(), Production():
             speakers += [s1.dict() for s1 in s.speakers]
 
         schedule = convert_to_schedule(subs)
+        append_breaks(schedule)
+        sort_by_start_time(schedule)
 
         sessions_fd.write(json.dumps(sessions, indent=2, default=serialize))
         speakers_fd.write(json.dumps(speakers, indent=2, default=serialize))
