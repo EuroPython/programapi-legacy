@@ -50,6 +50,7 @@ for env in Staging(), Production():
     ) as speakers_fd, open(env.SCHEDULE_PATH, "w") as schedule_fd:
         subs = pretalx.get_publishable_submissions()
         extra_speakers_info = pretalx.get_speakers()
+        rooms = [r.name for r in pretalx.get_rooms()]
 
         sessions = []
         for s in subs:
@@ -59,7 +60,7 @@ for env in Staging(), Production():
             sessions.append(s.dict())
             speakers += [s1.dict() for s1 in s.speakers]
 
-        schedule = convert_to_schedule(subs)
+        schedule = convert_to_schedule(subs, rooms)
         if "staging" not in env.event_name:
             # Breaks are hardcoded and work only for production schedule at the
             # moment.

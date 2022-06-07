@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from typing import Dict, List, Optional
@@ -73,6 +74,23 @@ class Slot(BaseModel):
     def extract(cls, values):
         # Extracing localised data
         values["room"] = values["room"]["en"]
+
+        return values
+
+
+class Room(BaseModel):
+    name: str
+    # description: Optional[str]
+    capacity: Optional[int]
+    position: Optional[int]
+
+    @root_validator(pre=True)
+    def extract(cls, values):
+        # Extracing localised data
+        values["name"] = values["name"]["en"]
+        if values["position"] is None:
+            # If position is None then put it at the end when sorting
+            values["position"] = 999
 
         return values
 
@@ -327,6 +345,11 @@ class Pretalx:
         speakers = {s.code: s for s in speakers}
         return speakers
 
+    def get_rooms(self):
+        results = self._paginate("/rooms", limit=25)
+        rooms = [Room.parse_obj(r) for r in results]
+        return sorted(rooms, key=lambda x: x.position)
+
 
 class PretalxError(Exception):
     pass
@@ -396,8 +419,11 @@ class PretalxHTTPAdapter(HTTPAdapter):
         return response
 
 
-def convert_to_schedule(sessions):
+def convert_to_schedule(sessions, rooms):
     schedule = {"days": defaultdict(lambda: defaultdict(list))}
+
+    def _according_to_room_position(x):
+        return rooms.index(x)
 
     for s in sessions:
         day = s.start.date()
@@ -405,6 +431,9 @@ def convert_to_schedule(sessions):
 
         if s.room not in schedule["days"][day]["rooms"]:
             schedule["days"][day]["rooms"].append(s.room)
+            # This is sorting too often, but data is not big enough to worry
+            # about it.
+            schedule["days"][day]["rooms"].sort(key=_according_to_room_position)
 
         speakers = [x.name for x in s.speakers]
         if speakers:
@@ -513,3 +542,19 @@ def sort_by_start_time(schedule):
         schedule["days"][day]["talks"] = sorted(
             schedule["days"][day]["talks"], key=lambda x: x["start_time"]
         )
+
+
+if __name__ == "__main__":
+
+    class Production(Config):
+        event_name = "europython-2022"
+        pretalx_token = os.environ["PRETALX_TOKEN"]  # THIS IS SECRET
+        pretalx_url = "https://program.europython.eu"
+        base_url = pretalx_url + "/api/events/" + event_name
+
+    env = Production()
+    pretalx = Pretalx(client=PretalxClient.from_config(env))
+
+    from IPython import embed
+
+    embed()
