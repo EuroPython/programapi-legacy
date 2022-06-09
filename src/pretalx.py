@@ -128,7 +128,10 @@ class Submission(BaseModel):
         # SubmissionType and Track have localised names. For this project we
         # only care about their english versions, so we can extract them here
         for field in ["submission_type", "track"]:
-            values[field] = values[field]["en"]
+            if values[field] is None:
+                continue
+            else:
+                values[field] = values[field]["en"]
 
         # Some things are available as answers to questions and we can extract
         # them here
@@ -146,11 +149,16 @@ class Submission(BaseModel):
         values["slug"] = slug
         values["website_url"] = f"https://ep2022.europython.eu/session/{slug}"
 
-        if values["slot"]:
+        if values["slot"] and values["slot"]["start"] is not None:
+            # NOTE: talks with multiple slots miss the slot information.
             slot = Slot.parse_obj(values["slot"])
             values["room"] = slot.room
             values["start"] = slot.start
             values["end"] = slot.end
+        else:
+            values["room"] = None
+            values["start"] = None
+            values["end"] = None
 
         return values
 
@@ -317,7 +325,11 @@ class Pretalx:
         # Going with a longer loop instead of list comprehension here in case
         # we need to debug validation errors from pydantic.
         for s in results:
-            sub = Submission.parse_obj(s)
+            try:
+                sub = Submission.parse_obj(s)
+            except Exception:
+                breakpoint()
+                pass
             subs.append(sub)
 
         # Stable sorting
@@ -426,6 +438,10 @@ def convert_to_schedule(sessions, rooms):
         return rooms.index(x)
 
     for s in sessions:
+        if s.start is None:
+            # Skip unscheduled and broken slots data
+            continue
+
         day = s.start.date()
         day = day.strftime("%Y-%m-%d")
 
