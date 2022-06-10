@@ -101,7 +101,7 @@ class Submission(BaseModel):
     speakers: List[Speaker]
     submission_type: str
     slug: str
-    track: str
+    track: Optional[str]
     state: str
     abstract: str
     abstract_as_a_tweet: str
