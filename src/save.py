@@ -58,6 +58,8 @@ for env in Staging(), Production():
         speakers += [s1.dict() for s1 in s.speakers]
 
     schedule = convert_to_schedule(subs, rooms)
+    schedule["generated_at"] = datetime.utcnow()
+
     if "staging" not in env.event_name:
         # Breaks are hardcoded and work only for production schedule at the
         # moment.
