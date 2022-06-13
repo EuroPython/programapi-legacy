@@ -585,13 +585,6 @@ def fix_duration_if_tutorial(session):
 
     return session
 
-def fix_start_if_special_event(session):
-    # All special events start at 09:30.
-    if session.is_special_event:
-        session.start = session.start.replace(hour=9, minute=30)
-
-    return session
-
 def fix_duration_if_special_event(session):
     # This is an all day event - four sessions 90 minutes each.
     if session.is_special_event:

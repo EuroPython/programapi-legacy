@@ -12,7 +12,6 @@ from pretalx import (
     convert_to_schedule,
     fix_duration_if_special_event,
     fix_duration_if_tutorial,
-    fix_start_if_special_event,
     sort_by_start_time,
 )
 
@@ -56,9 +55,6 @@ for env in Staging(), Production():
     subs = pretalx.get_publishable_submissions()
     extra_speakers_info = pretalx.get_speakers()
     rooms = [r.name for r in pretalx.get_rooms()]
-
-    for s in subs:
-        s = fix_start_if_special_event(s)
 
     # At this point all tutorials are still 90 minutes in the responses,
     # because that's how they are configured in pretalx.
