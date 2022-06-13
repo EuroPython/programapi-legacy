@@ -202,7 +202,7 @@ class Submission(BaseModel):
 
             assert sub.room and sub.start and sub.end
 
-            # NOTE: should we do intersaction here instead of comparison?
+            # NOTE: should we do intersection here instead of comparison?
             if sub and sub.start == self.start:
                 output.append(sub.code)
 
@@ -488,8 +488,8 @@ def convert_to_schedule(sessions, rooms):
             starts = [
                 s.start,
                 s.start + timedelta(minutes=90 + 15),
-                s.start + timedelta(minutes=90 + 15 + 90 + 30),
-                s.start + timedelta(minutes=90 + 15 + 90 + 30 + 90 + 15),
+                s.start + timedelta(minutes=90 + 15 + 90 + 60),
+                s.start + timedelta(minutes=90 + 15 + 90 + 60 + 90 + 15),
             ]
         else:
             starts = [s.start]
@@ -579,14 +579,20 @@ def sort_by_start_time(schedule):
         )
 
 
-def fix_if_tutorial(session):
+def fix_duration_if_tutorial(session):
     if session.is_tutorial:
         session.duration = "180"
 
     return session
 
+def fix_start_if_special_event(session):
+    # All special events start at 09:30.
+    if session.is_special_event:
+        session.start = session.start.replace(hour=9, minute=30)
 
-def fix_if_special_event(session):
+    return session
+
+def fix_duration_if_special_event(session):
     # This is an all day event - four sessions 90 minutes each.
     if session.is_special_event:
         session.duration = "360"
