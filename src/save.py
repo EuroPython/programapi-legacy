@@ -10,6 +10,7 @@ from pretalx import (
     PretalxClient,
     append_breaks,
     convert_to_schedule,
+    fix_if_special_event,
     fix_if_tutorial,
     sort_by_start_time,
 )
@@ -66,9 +67,9 @@ for env in Staging(), Production():
         # To simplify just overwrite full list of objects
         s.speakers = [extra_speakers_info[s.code] for s in s.speakers]
         s = fix_if_tutorial(s)
+        s = fix_if_special_event(s)
         sessions.append(s.dict())
         speakers += [s1.dict() for s1 in s.speakers]
-
 
     if "staging" not in env.event_name:
         # Breaks are hardcoded and work only for production schedule at the

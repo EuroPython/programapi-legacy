@@ -182,6 +182,10 @@ class Submission(BaseModel):
     def is_tutorial(self):
         return "Tutorial" in self.submission_type
 
+    @property
+    def is_special_event(self):
+        return "Special" in self.submission_type
+
     def get_talks_in_parallel(self, subs: List["Submission"]) -> Optional[List[str]]:
         if self.room is None:
             return None
@@ -467,7 +471,7 @@ def convert_to_schedule(sessions, rooms):
                 "level": s.python_level,
                 "rooms": [s.room],
                 "slug": s.slug,
-                "speaker": speaker,
+                "speakers": speakers,
                 "start_time": start.time(),
                 "talk_id": s.code,
                 "time": start.time(),
@@ -478,17 +482,20 @@ def convert_to_schedule(sessions, rooms):
 
         if s.is_tutorial:
             starts = [s.start, s.start + timedelta(minutes=90 + 15)]
+        elif s.is_special_event:
+            # Special events are all-day-long (6 hours) - 4 sessions, 90
+            # minutes each
+            starts = [
+                s.start,
+                s.start + timedelta(minutes=90 + 15),
+                s.start + timedelta(minutes=90 + 15 + 90 + 30),
+                s.start + timedelta(minutes=90 + 15 + 90 + 30 + 90 + 15),
+            ]
         else:
             starts = [s.start]
 
-        for speaker in speakers:
-            for start in starts:
-                schedule["days"][day]["talks"].append(_session(start))
-
-        if not speakers:
-            speaker = None
-            for start in starts:
-                schedule["days"][day]["talks"].append(_session(start))
+        for start in starts:
+            schedule["days"][day]["talks"].append(_session(start))
 
     return schedule
 
@@ -575,6 +582,14 @@ def sort_by_start_time(schedule):
 def fix_if_tutorial(session):
     if session.is_tutorial:
         session.duration = "180"
+
+    return session
+
+
+def fix_if_special_event(session):
+    # This is an all day event - four sessions 90 minutes each.
+    if session.is_special_event:
+        session.duration = "360"
 
     return session
 
