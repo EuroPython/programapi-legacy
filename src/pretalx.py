@@ -178,6 +178,10 @@ class Submission(BaseModel):
     def is_publishable(self):
         return self.is_accepted or self.is_confirmed
 
+    @property
+    def is_tutorial(self):
+        return "Tutorial" in self.submission_type
+
     def get_talks_in_parallel(self, subs: List["Submission"]) -> Optional[List[str]]:
         if self.room is None:
             return None
@@ -452,13 +456,9 @@ def convert_to_schedule(sessions, rooms):
             schedule["days"][day]["rooms"].sort(key=_according_to_room_position)
 
         speakers = [x.name for x in s.speakers]
-        if speakers:
-            speaker = speakers[0]
-        else:
-            speaker = None
 
-        schedule["days"][day]["talks"].append(
-            {
+        def _session(start):
+            return {
                 "day": day,
                 "ev_custom": s.title,
                 "ev_duration": s.duration,
@@ -467,16 +467,28 @@ def convert_to_schedule(sessions, rooms):
                 "level": s.python_level,
                 "rooms": [s.room],
                 "slug": s.slug,
-                # NOTE: there could be multiple speakers
                 "speaker": speaker,
-                "start_time": s.start.time(),
+                "start_time": start.time(),
                 "talk_id": s.code,
-                "time": s.start.time(),
+                "time": start.time(),
                 "type": s.submission_type,
                 "title": s.title,
                 "tt_duration": s.duration,
             }
-        )
+
+        if s.is_tutorial:
+            starts = [s.start, s.start + timedelta(minutes=90 + 15)]
+        else:
+            starts = [s.start]
+
+        for speaker in speakers:
+            for start in starts:
+                schedule["days"][day]["talks"].append(_session(start))
+
+        if not speakers:
+            speaker = None
+            for start in starts:
+                schedule["days"][day]["talks"].append(_session(start))
 
     return schedule
 
@@ -558,6 +570,13 @@ def sort_by_start_time(schedule):
         schedule["days"][day]["talks"] = sorted(
             schedule["days"][day]["talks"], key=lambda x: x["start_time"]
         )
+
+
+def fix_if_tutorial(session):
+    if session.is_tutorial:
+        session.duration = "180"
+
+    return session
 
 
 if __name__ == "__main__":

@@ -2,12 +2,15 @@ import json
 import os
 from datetime import datetime
 
+import requests
+
 from pretalx import (
     Config,
     Pretalx,
     PretalxClient,
     append_breaks,
     convert_to_schedule,
+    fix_if_tutorial,
     sort_by_start_time,
 )
 
@@ -28,6 +31,9 @@ class Production(Config):
     pretalx_token = os.environ["PRETALX_TOKEN"]  # THIS IS SECRET
     pretalx_url = "https://program.europython.eu"
     base_url = pretalx_url + "/api/events/" + event_name
+    publich_schedule_url = (
+        pretalx_url + "/europython-2022/schedule/export/schedule.json"
+    )
 
     SESSIONS_PATH = "./data/sessions.json"
     SPEAKERS_PATH = "./data/speakers.json"
@@ -49,16 +55,20 @@ for env in Staging(), Production():
     extra_speakers_info = pretalx.get_speakers()
     rooms = [r.name for r in pretalx.get_rooms()]
 
+    # At this point all tutorials are still 90 minutes in the responses,
+    # because that's how they are configured in pretalx.
+    schedule = convert_to_schedule(subs, rooms)
+    schedule["generated_at"] = datetime.utcnow()
+
     sessions = []
     for s in subs:
         # Backfill all the data from the other endpoint
         # To simplify just overwrite full list of objects
         s.speakers = [extra_speakers_info[s.code] for s in s.speakers]
+        s = fix_if_tutorial(s)
         sessions.append(s.dict())
         speakers += [s1.dict() for s1 in s.speakers]
 
-    schedule = convert_to_schedule(subs, rooms)
-    schedule["generated_at"] = datetime.utcnow()
 
     if "staging" not in env.event_name:
         # Breaks are hardcoded and work only for production schedule at the
