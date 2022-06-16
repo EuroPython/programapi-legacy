@@ -133,6 +133,10 @@ class Submission(BaseModel):
             else:
                 values[field] = values[field]["en"]
 
+        # Submission types can have extra comments in square brackets, we don't
+        # need them on the website, so we can filter them out here.
+        values['submission_type'] = values['submission_type'].split('[')[0].strip()
+
         # Some things are available as answers to questions and we can extract
         # them here
         for answer in values["answers"]:
