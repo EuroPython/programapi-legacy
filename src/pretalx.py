@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 import requests
 from pydantic import BaseModel
@@ -107,8 +107,10 @@ class Submission(BaseModel):
     abstract_as_a_tweet: str
     description: str
     duration: str
+
     python_level: str = ""
     domain_level: str = ""
+    delivery: Optional[str] = ""
 
     # This is embedding a slot inside a submission for easier lookup later
     room: Optional[str] = None
@@ -133,9 +135,19 @@ class Submission(BaseModel):
             else:
                 values[field] = values[field]["en"]
 
-        # Submission types can have extra comments in square brackets, we don't
-        # need them on the website, so we can filter them out here.
-        values['submission_type'] = values['submission_type'].split('[')[0].strip()
+        # Submission types can have extra comments about how they are delivered
+        # in square brackets. We want to make it available in the API for other
+        # places, but we do want to skip it for the website.
+        if "[" in values["submission_type"]:
+            sub_type, delivery = values["submission_type"].split("[")
+            if "remote" not in delivery:
+                values["delivery"] = "in-person"
+            else:
+                values["delivery"] = "remote"
+        else:
+            sub_type = values["submission_type"]
+
+        values["submission_type"] = sub_type.strip()
 
         # Some things are available as answers to questions and we can extract
         # them here
@@ -481,6 +493,7 @@ def convert_to_schedule(sessions, rooms):
                 "time": start.time(),
                 "type": s.submission_type,
                 "title": s.title,
+                "delivery": s.delivery,
                 "tt_duration": s.duration,
             }
 
@@ -506,12 +519,11 @@ def convert_to_schedule(sessions, rooms):
 
 def append_breaks(schedule):
     """
-    Those are hardcoded breaks, since we don't get them from the pretalx API
+    Those are hardcoded breaks, since we don't get them directly from the
+    pretalx API
     """
-    tutorial_days = [date(2022, 7, x).strftime("%Y-%m-%d") for x in [11, 12]]
-    conference_days = [date(2022, 7, x).strftime("%Y-%m-%d") for x in [13, 14, 15]]
 
-    def break_(name: str, start: time, duration: str):
+    def break_(day: str, name: str, start: time, duration: str):
         return {
             "day": day,
             "ev_custom": name,
@@ -529,51 +541,36 @@ def append_breaks(schedule):
             "tt_duration": duration,
         }
 
-    for day in tutorial_days:
-        schedule["days"][day]["talks"].append(
-            break_(
-                "Coffee Break",
-                start=time(11, 00),
-                duration="15",
-            )
-        )
-        schedule["days"][day]["talks"].append(
-            break_(
-                "Lunch Break",
-                start=time(12, 30),
-                duration="60",
-            )
-        )
-        schedule["days"][day]["talks"].append(
-            break_(
-                "Coffee Break",
-                start=time(15, 15),
-                duration="15",
-            )
-        )
+    breaks = [
+        # Monday
+        break_("2022-07-11", "Coffee Break", time(11, 00), "15"),
+        break_("2022-07-11", "Lunch Break", time(12, 30), "60"),
+        break_("2022-07-11", "Coffee Break", time(15, 15), "15"),
 
-    for day in conference_days:
-        schedule["days"][day]["talks"].append(
-            break_(
-                "Coffee Break",
-                start=time(10, 00),
-                duration="30",
-            )
-        )
-        schedule["days"][day]["talks"].append(
-            break_(
-                "Lunch Break",
-                start=time(13, 00),
-                duration="60",
-            )
-        )
-        schedule["days"][day]["talks"].append(
-            break_(
-                "Coffee Break",
-                start=time(15, 5),
-                duration="25",
-            )
-        )
+        # Tuesday
+        break_("2022-07-12", "Coffee Break", time(11, 00), "15"),
+        break_("2022-07-12", "Lunch Break", time(12, 30), "60"),
+        break_("2022-07-12", "Coffee Break", time(15, 15), "15"),
+
+        # Wednesday
+        break_("2022-07-13", "Coffee Break", time(10, 15), "30"),
+        break_("2022-07-13", "Lunch Break", time(13, 00), "60"),
+        break_("2022-07-13", "Coffee Break", time(15, 5), "25"),
+
+        # Thursday
+        break_("2022-07-14", "Coffee Break", time(10, 00), "30"),
+        break_("2022-07-14", "Lunch Break", time(13, 00), "60"),
+        break_("2022-07-14", "Coffee Break", time(15, 5), "25"),
+
+        # Friday
+        break_("2022-07-15", "Coffee Break", time(10, 00), "30"),
+        break_("2022-07-15", "Lunch Break", time(13, 00), "60"),
+        break_("2022-07-15", "Coffee Break", time(15, 5), "25"),
+    ]
+
+
+    for b in breaks:
+        schedule["days"][b["day"]]["talks"].append(b)
 
 
 def sort_by_start_time(schedule):
@@ -588,6 +585,7 @@ def fix_duration_if_tutorial(session):
         session.duration = "180"
 
     return session
+
 
 def fix_duration_if_special_event(session):
     # This is an all day event - four sessions 90 minutes each.
